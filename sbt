@@ -119,7 +119,7 @@ init_default_option_file () {
 declare -r cms_opts="-XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC"
 declare -r jit_opts="-XX:ReservedCodeCacheSize=256m -XX:+TieredCompilation"
 declare -r default_jvm_opts_common="-Xms512m -Xmx1536m -Xss2m $jit_opts $cms_opts"
-declare -r noshare_opts="-Dsbt.global.base=project/.sbtboot -Dsbt.boot.directory=project/.boot -Dsbt.ivy.home=project/.ivy"
+declare -r noshare_opts="-Dsbt.global.base=project/.sbtboot -Dsbt.boot.directory=project/.boot -Dsbt.ivy.home=project/.ivy -Dsbt.global.staging=project/.staging"
 declare -r latest_28="2.8.2"
 declare -r latest_29="2.9.3"
 declare -r latest_210="2.10.6"
@@ -200,9 +200,21 @@ elif [[ -e "$JAVA_HOME/bin/java" ]]; then
   setJavaHomeQuietly "$JAVA_HOME"
 fi
 
+# If we don't have an explicit sbt_jar, but there's a sbt-launch.jar in the same directory
+# as the script, use it.
+if [[ -z "$sbt_jar" ]]; then
+  test_sbt_jar="$(dirname $script_path)/sbt-launch.jar"
+  if [[ -r $test_sbt_jar ]]; then
+    sbt_jar=$test_sbt_jar
+  fi
+fi
+
+
 # directory to store sbt launchers
-[[ -d "$sbt_launch_dir" ]] || mkdir -p "$sbt_launch_dir"
-[[ -w "$sbt_launch_dir" ]] || sbt_launch_dir="$(mktemp -d -t sbt_extras_launchers.XXXXXX)"
+if [[ -z "$sbt_jar" ]]; then
+  [[ -d "$sbt_launch_dir" ]] || mkdir -p "$sbt_launch_dir"
+  [[ -w "$sbt_launch_dir" ]] || sbt_launch_dir="$(mktemp -d -t sbt_extras_launchers.XXXXXX)"
+fi
 
 java_version () {
   local version=$("$java_cmd" -version 2>&1 | grep -E -e '(java|openjdk) version' | awk '{ print $3 }' | tr -d \")
